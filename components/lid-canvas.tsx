@@ -87,6 +87,8 @@ export function LidCanvas({
             position: "absolute",
             inset: 0,
             borderRadius: "2.5rem",
+            // @ts-expect-error — cornerShape is a newer CSS property not yet in TypeScript's type definitions
+            cornerShape: "superellipse(1.25)",
             pointerEvents: "none",
             zIndex: 0,
           }}

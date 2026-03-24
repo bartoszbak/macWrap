@@ -95,6 +95,22 @@ export default function Home() {
     setSelectedId(uid);
   }, []);
 
+  const handleMacSizeChange = useCallback((newSize: MacSize) => {
+    const oldSpec = MAC_SIZE_SPECS[macSize];
+    const newSpec = MAC_SIZE_SPECS[newSize];
+    const vw = window.innerWidth;
+    const oldWidth = Math.min(vw * oldSpec.vwFactor / 100, oldSpec.maxWidth);
+    const newWidth = Math.min(vw * newSpec.vwFactor / 100, newSpec.maxWidth);
+    const oldHeight = oldWidth / oldSpec.aspectRatio;
+    const newHeight = newWidth / newSpec.aspectRatio;
+    const scaleX = newWidth / oldWidth;
+    const scaleY = newHeight / oldHeight;
+    setPlacedStickers((prev) =>
+      prev.map((s) => ({ ...s, x: s.x * scaleX, y: s.y * scaleY }))
+    );
+    setMacSize(newSize);
+  }, [macSize]);
+
   const gridColor = GRID_COLOR[bgColor];
   const lidDims = lidDimensions(MAC_SIZE_SPECS[macSize]);
 
@@ -129,7 +145,7 @@ export default function Home() {
 
       {/* Top-right: mac size */}
       <div className="mw-page-mac-size-controls absolute top-4 right-4 z-50">
-        <MacSizeToggle size={macSize} onChange={setMacSize} bgIsDark={bgColor === "dark"} />
+        <MacSizeToggle size={macSize} onChange={handleMacSizeChange} bgIsDark={bgColor === "dark"} />
       </div>
 
       {/* Top-left: capture */}

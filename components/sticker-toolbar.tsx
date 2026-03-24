@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useMemo } from "react";
 import { motion } from "motion/react";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,16 @@ export function StickerToolbar({
 }: StickerToolbarProps) {
   const draggingDef = useRef<StickerDef | null>(null);
   const ghostRef = useRef<HTMLDivElement | null>(null);
+
+  // Stable random rotations per sticker (10–45°, alternating sign)
+  const rotations = useMemo(
+    () => defs.map((_, i) => {
+      const angle = 4 + Math.random() * 12;
+      return i % 2 === 0 ? angle : -angle;
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [defs.length]
+  );
 
   const handleDragStart = (def: StickerDef, e: React.PointerEvent) => {
     draggingDef.current = def;
@@ -104,33 +114,31 @@ export function StickerToolbar({
       >
         <div
           className="mw-toolbar-pill flex items-center gap-2 px-4 py-3 rounded-2xl"
-          style={{
-            background: "rgba(30, 30, 40, 0.75)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-            border: "1px solid rgba(255,255,255,0.12)",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
-          }}
         >
-          {/* Sticker count badge */}
-          <div
-            className="mw-toolbar-count text-xs font-medium px-2 py-0.5 rounded-full mr-1"
-            style={{
-              background: "rgba(255,255,255,0.1)",
-              color: placedCount > 0 ? "#e0e0e0" : "#666",
-            }}
-          >
-            {placedCount} {placedCount === 1 ? "sticker" : "stickers"}
-          </div>
+          {/* Sticker count badge — hidden when empty */}
+          {placedCount > 0 && (
+            <>
+              <div
+                className="mw-toolbar-count text-xs font-medium px-2 py-0.5 rounded-full mr-1"
+                style={{
+                  background: "rgba(255,255,255,0.1)",
+                  color: "#e0e0e0",
+                }}
+              >
+                {placedCount} {placedCount === 1 ? "sticker" : "stickers"}
+              </div>
 
-          {/* Divider */}
-          <div className="mw-toolbar-divider w-px h-6 bg-white/10 mx-1" />
+              {/* Divider */}
+              <div className="mw-toolbar-divider w-px h-6 bg-white/10 mx-1" />
+            </>
+          )}
 
           {/* Sticker items */}
           {defs.map((def, i) => (
             <motion.div
               key={def.id}
               className="mw-toolbar-item-wrapper"
+              style={{ marginLeft: i === 0 ? 0 : -16, zIndex: i }}
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{
@@ -143,17 +151,14 @@ export function StickerToolbar({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <motion.div
-                    className="mw-toolbar-item w-10 h-10 rounded-xl flex items-center justify-center cursor-grab active:cursor-grabbing"
+                    className="mw-toolbar-item cursor-grab active:cursor-grabbing"
                     style={{
-                      background: "rgba(255,255,255,0.05)",
-                      border: "1px solid rgba(255,255,255,0.08)",
+                      width: def.size.x * 0.75,
+                      height: def.size.y * 0.75,
+                      rotate: rotations[i],
                       touchAction: "none",
                     }}
-                    whileHover={{
-                      scale: 1.15,
-                      y: -3,
-                      background: "rgba(255,255,255,0.12)",
-                    }}
+                    whileHover={{ scale: 1.15, y: -3 }}
                     whileTap={{ scale: 0.95 }}
                     onPointerDown={(e) => handleDragStart(def, e)}
                     onPointerMove={handleDragMove}
@@ -161,7 +166,17 @@ export function StickerToolbar({
                     onPointerCancel={handleDragEnd}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={def.src} alt={def.label} width={28} height={28} style={{ pointerEvents: "none" }} />
+                    <img
+                      src={def.src}
+                      alt={def.label}
+                      width={def.size.x * 0.75}
+                      height={def.size.y * 0.75}
+                      style={{
+                        display: "block",
+                        pointerEvents: "none",
+                        filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.35))",
+                      }}
+                    />
                   </motion.div>
                 </TooltipTrigger>
                 <TooltipContent side="top">{def.label}</TooltipContent>

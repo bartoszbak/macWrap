@@ -180,26 +180,6 @@ export function Sticker({
         />
       </motion.div>
 
-      {/* Selected ring */}
-      <AnimatePresence>
-        {isSelected && (
-          <motion.div
-            key="ring"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            transition={{ duration: 0.1 }}
-            style={{
-              position: "absolute",
-              inset: -4,
-              borderRadius: "50%",
-              border: "2px solid rgba(255,255,255,0.7)",
-              pointerEvents: "none",
-              boxShadow: "0 0 0 1px rgba(255,255,255,0.2)",
-            }}
-          />
-        )}
-      </AnimatePresence>
 
       {/* Delete button */}
       <AnimatePresence>
