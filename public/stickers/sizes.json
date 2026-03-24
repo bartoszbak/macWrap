@@ -1,0 +1,11 @@
+{
+  "_instructions": [
+    "Map each sticker ID (filename without .svg) to its rendered size in pixels.",
+    "Each entry is an object with 'x' (width) and 'y' (height) keys.",
+    "Drop a new .svg into this folder and add an entry here with an appropriate size.",
+    "If a sticker is missing from this map it falls back to the default size { x: 72, y: 72 }."
+  ],
+
+  "sticker-1": { "x": 120, "y": 120 },
+  "sticker-2": { "x": 74, "y": 70 }
+}
