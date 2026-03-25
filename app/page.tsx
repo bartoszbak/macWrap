@@ -12,7 +12,7 @@ import type { LidColor, BgColor, MacSize, StickerDef, PlacedSticker } from "@/li
 import { MAC_SIZE_SPECS, lidDimensions, computeLidPixelDims } from "@/lib/mac-sizes";
 
 const BG_GRADIENTS: Record<BgColor, string> = {
-  dark: "radial-gradient(ellipse at 50% 40%, #16161f 0%, #0a0a0f 70%)",
+  dark: "#000000",
   light: "#ffffff",
 };
 
