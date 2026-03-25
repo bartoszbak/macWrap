@@ -18,6 +18,9 @@ export const MAC_SIZE_SPECS: Record<MacSize, MacSizeSpec> = {
 };
 
 export function computeLidPixelDims(spec: MacSizeSpec) {
+  if (typeof window === "undefined") {
+    return { width: spec.maxWidth, height: spec.maxWidth / spec.aspectRatio };
+  }
   const width = Math.min(window.innerWidth * spec.vwFactor / 100, spec.maxWidth);
   return { width, height: width / spec.aspectRatio };
 }
