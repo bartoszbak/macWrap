@@ -42,10 +42,6 @@ export function LidColorToggle({ color, onChange }: LidColorToggleProps) {
               height: 28,
               borderRadius: "50%",
               background: opt.bg,
-              border: `2px solid ${selected ? "rgba(255,255,255,0.8)" : opt.border}`,
-              boxShadow: selected
-                ? "0 0 0 1px rgba(255,255,255,0.3), 0 2px 8px rgba(0,0,0,0.4)"
-                : "0 2px 6px rgba(0,0,0,0.3)",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",

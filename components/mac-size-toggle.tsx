@@ -15,18 +15,10 @@ const SIZES: MacSize[] = ["14", "16"];
 export function MacSizeToggle({ size, onChange, bgIsDark }: MacSizeToggleProps) {
   const textColor = bgIsDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.4)";
   const textColorActive = bgIsDark ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.85)";
-  const pillBg = bgIsDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
-  const pillBorder = bgIsDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)";
   const activeBg = bgIsDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)";
 
   return (
-    <div
-      className="mw-mac-size-toggle flex items-center gap-0.5 px-1 py-1 rounded-full"
-      style={{
-        background: pillBg,
-        border: `1px solid ${pillBorder}`,
-      }}
-    >
+    <div className="mw-mac-size-toggle flex items-center gap-0.5">
       {SIZES.map((s) => {
         const selected = size === s;
         return (

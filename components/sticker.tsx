@@ -2,6 +2,7 @@
 
 import { useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { X, ArrowUp, ArrowDown } from "lucide-react";
 import type { PlacedSticker, StickerDef } from "@/lib/types";
 
 interface StickerProps {
@@ -39,22 +40,28 @@ export function Sticker({
     const lid = lidRef.current;
     if (!lid) return null;
     const rect = lid.getBoundingClientRect();
-    return { x: rect.left + sticker.x, y: rect.top + sticker.y };
+    return { x: rect.left + sticker.x * rect.width, y: rect.top + sticker.y * rect.height };
   }, [lidRef, sticker.x, sticker.y]);
 
   const clampPosition = useCallback(
     (x: number, y: number) => {
       const lid = lidRef.current;
       if (!lid) return { x, y };
-      const { width, height } = lid.getBoundingClientRect();
-      const halfX = (def.size.x * sticker.scale) / 2;
-      const halfY = (def.size.y * sticker.scale) / 2;
+      const { width: lidW, height: lidH } = lid.getBoundingClientRect();
+      const w = (def.size.x * sticker.scale) / 2;
+      const h = (def.size.y * sticker.scale) / 2;
+      const rad = (sticker.rotation * Math.PI) / 180;
+      const cos = Math.abs(Math.cos(rad));
+      const sin = Math.abs(Math.sin(rad));
+      // rotated bounding box half-extents in px, converted to fractions
+      const hxFrac = (w * cos + h * sin) / lidW;
+      const hyFrac = (w * sin + h * cos) / lidH;
       return {
-        x: Math.max(EDGE_INSET + halfX, Math.min(width - EDGE_INSET - halfX, x)),
-        y: Math.max(EDGE_INSET + halfY, Math.min(height - EDGE_INSET - halfY, y)),
+        x: Math.max(EDGE_INSET + hxFrac, Math.min(1 - EDGE_INSET - hxFrac, x)),
+        y: Math.max(EDGE_INSET + hyFrac, Math.min(1 - EDGE_INSET - hyFrac, y)),
       };
     },
-    [lidRef, def.size.x, def.size.y, sticker.scale]
+    [lidRef, def.size.x, def.size.y, sticker.scale, sticker.rotation]
   );
 
   // ── Drag ────────────────────────────────────────────────────────────────────
@@ -77,13 +84,16 @@ export function Sticker({
   const handleDragPointerMove = useCallback(
     (e: React.PointerEvent) => {
       if (!dragRef.current) return;
+      const lid = lidRef.current;
+      if (!lid) return;
+      const { width: lidW, height: lidH } = lid.getBoundingClientRect();
       const clamped = clampPosition(
-        dragRef.current.stickerX + (e.clientX - dragRef.current.mouseX),
-        dragRef.current.stickerY + (e.clientY - dragRef.current.mouseY)
+        dragRef.current.stickerX + (e.clientX - dragRef.current.mouseX) / lidW,
+        dragRef.current.stickerY + (e.clientY - dragRef.current.mouseY) / lidH
       );
       onUpdate(sticker.uid, clamped);
     },
-    [sticker.uid, clampPosition, onUpdate]
+    [sticker.uid, lidRef, clampPosition, onUpdate]
   );
 
   const handleDragPointerUp = useCallback(() => {
@@ -141,8 +151,8 @@ export function Sticker({
       transition={{ type: "spring", stiffness: 500, damping: 22, opacity: { duration: 0.15 } }}
       style={{
         position: "absolute",
-        left: sticker.x,
-        top: sticker.y,
+        left: `${sticker.x * 100}%`,
+        top: `${sticker.y * 100}%`,
         width,
         height,
         x: "-50%",
@@ -166,7 +176,7 @@ export function Sticker({
           y: isHovered && !dragRef.current ? -2 : 0,
           filter: isHovered
             ? "drop-shadow(0 4px 12px rgba(0,0,0,0.5))"
-            : "drop-shadow(0 2px 4px rgba(0,0,0,0.3))",
+            : "drop-shadow(rgba(0, 0, 0, 0.05) 0px 4px 2px)",
         }}
         transition={{ duration: 0.15 }}
       >
@@ -218,7 +228,7 @@ export function Sticker({
             whileHover={{ scale: 1.2 }}
             whileTap={{ scale: 0.9 }}
           >
-            ×
+            <X size={12} strokeWidth={3} />
           </motion.button>
         )}
       </AnimatePresence>
@@ -259,7 +269,7 @@ export function Sticker({
               whileHover={{ scale: 1.2 }}
               whileTap={{ scale: 0.9 }}
             >
-              ↑
+              <ArrowUp size={12} strokeWidth={2.5} />
             </motion.button>
             <motion.button
               key="layer-down"
@@ -293,7 +303,7 @@ export function Sticker({
               whileHover={{ scale: 1.2 }}
               whileTap={{ scale: 0.9 }}
             >
-              ↓
+              <ArrowDown size={12} strokeWidth={2.5} />
             </motion.button>
           </>
         )}

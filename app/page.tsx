@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
-import { motion } from "motion/react";
+import { useState, useRef, useCallback, useEffect, useLayoutEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { LidCanvas } from "@/components/lid-canvas";
 import { StickerToolbar } from "@/components/sticker-toolbar";
 import { LidColorToggle } from "@/components/lid-color-toggle";
@@ -9,7 +9,7 @@ import { BgColorToggle } from "@/components/bg-color-toggle";
 import { MacSizeToggle } from "@/components/mac-size-toggle";
 import { CaptureButton } from "@/components/capture-button";
 import type { LidColor, BgColor, MacSize, StickerDef, PlacedSticker } from "@/lib/types";
-import { MAC_SIZE_SPECS, lidDimensions } from "@/lib/mac-sizes";
+import { MAC_SIZE_SPECS, lidDimensions, computeLidPixelDims } from "@/lib/mac-sizes";
 
 const BG_GRADIENTS: Record<BgColor, string> = {
   dark: "radial-gradient(ellipse at 50% 40%, #16161f 0%, #0a0a0f 70%)",
@@ -21,17 +21,29 @@ const GRID_COLOR: Record<BgColor, string> = {
   light: "rgba(0,0,0,0.04)",
 };
 
+const STORAGE_KEY = "macwrap-stickers-v2";
+
 let uidCounter = 0;
 function generateUid() {
   return `sticker-${++uidCounter}-${Date.now()}`;
+}
+
+function loadStickers(): PlacedSticker[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as PlacedSticker[]) : [];
+  } catch {
+    return [];
+  }
 }
 
 export default function Home() {
   const [lidColor, setLidColor] = useState<LidColor>("silver");
   const [bgColor, setBgColor] = useState<BgColor>("dark");
   const [macSize, setMacSize] = useState<MacSize>("14");
-  const [placedStickers, setPlacedStickers] = useState<PlacedSticker[]>([]);
+  const [placedStickers, setPlacedStickers] = useState<PlacedSticker[]>(() => loadStickers());
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [lidSelected, setLidSelected] = useState(false);
   const [stickerDefs, setStickerDefs] = useState<StickerDef[]>([]);
   const lidRef = useRef<HTMLDivElement | null>(null);
   const captureRef = useRef<HTMLDivElement | null>(null);
@@ -43,11 +55,20 @@ export default function Home() {
       .catch(console.error);
   }, []);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(placedStickers));
+    } catch {
+      // storage full or unavailable
+    }
+  }, [placedStickers]);
+
   const handleStickerDrop = useCallback(
     (sticker: Omit<PlacedSticker, "uid">) => {
       const newSticker: PlacedSticker = { ...sticker, uid: generateUid() };
       setPlacedStickers((prev) => [...prev, newSticker]);
       setSelectedId(newSticker.uid);
+      setLidSelected(false);
     },
     []
   );
@@ -89,97 +110,178 @@ export default function Home() {
   const handleClearAll = useCallback(() => {
     setPlacedStickers([]);
     setSelectedId(null);
+    localStorage.removeItem(STORAGE_KEY);
   }, []);
 
   const handleSelect = useCallback((uid: string | null) => {
     setSelectedId(uid);
+    if (uid !== null) setLidSelected(false);
+  }, []);
+
+  const handleLidClick = useCallback(() => {
+    setLidSelected(true);
+    setSelectedId(null);
   }, []);
 
   const handleMacSizeChange = useCallback((newSize: MacSize) => {
-    const oldSpec = MAC_SIZE_SPECS[macSize];
-    const newSpec = MAC_SIZE_SPECS[newSize];
-    const vw = window.innerWidth;
-    const oldWidth = Math.min(vw * oldSpec.vwFactor / 100, oldSpec.maxWidth);
-    const newWidth = Math.min(vw * newSpec.vwFactor / 100, newSpec.maxWidth);
-    const oldHeight = oldWidth / oldSpec.aspectRatio;
-    const newHeight = newWidth / newSpec.aspectRatio;
-    const scaleX = newWidth / oldWidth;
-    const scaleY = newHeight / oldHeight;
-    setPlacedStickers((prev) =>
-      prev.map((s) => ({ ...s, x: s.x * scaleX, y: s.y * scaleY }))
-    );
     setMacSize(newSize);
+  }, []);
+
+  const [lidPx, setLidPx] = useState(() => computeLidPixelDims(MAC_SIZE_SPECS[macSize]));
+
+  useLayoutEffect(() => {
+    const update = () => setLidPx(computeLidPixelDims(MAC_SIZE_SPECS[macSize]));
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
   }, [macSize]);
 
   const gridColor = GRID_COLOR[bgColor];
-  const lidDims = lidDimensions(MAC_SIZE_SPECS[macSize]);
+  const isDark = bgColor === "dark";
+  const dims = lidDimensions(MAC_SIZE_SPECS[macSize]);
+  const pillBg = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)";
+  const pillBorder = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)";
+  const dividerColor = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)";
 
   return (
     <motion.main
       animate={{ background: BG_GRADIENTS[bgColor] }}
       transition={{ duration: 0.4, ease: "easeInOut" }}
       className="mw-page-root min-h-screen flex flex-col items-center justify-center relative overflow-hidden"
+      onPointerDown={() => setLidSelected(false)}
     >
-      {/* Subtle grid background */}
+      {/* Dotted grid background */}
       <div
         className="mw-page-grid"
         style={{
           position: "absolute",
           inset: 0,
-          backgroundImage: `linear-gradient(${gridColor} 1px, transparent 1px), linear-gradient(90deg, ${gridColor} 1px, transparent 1px)`,
+          backgroundImage: `radial-gradient(circle, ${gridColor} 1.5px, transparent 1.5px)`,
           backgroundSize: "40px 40px",
           pointerEvents: "none",
           transition: "background-image 0.4s",
         }}
       />
 
-      {/* Bottom-right: lid color */}
-      <div className="mw-page-lid-color-controls absolute bottom-4 right-4 z-50">
-        <LidColorToggle color={lidColor} onChange={setLidColor} />
-      </div>
+      {/* Top bar: Save + BgColor + Wipe */}
+      <motion.div
+        initial={{ y: -40, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 300, damping: 28, delay: 0.1 }}
+        className="mw-page-top-bar fixed top-4 left-1/2 -translate-x-1/2 z-50"
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <div
+          className="flex items-center gap-2 px-3 py-2 rounded-2xl"
+          style={{
+            background: pillBg,
+            border: `1px solid ${pillBorder}`,
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+          }}
+        >
+          <CaptureButton
+            captureRef={captureRef}
+            onBeforeCapture={() => setSelectedId(null)}
+            bgIsDark={isDark}
+          />
+          <div className="mw-toolbar-divider w-px h-5 mx-1" style={{ background: dividerColor }} />
+          <BgColorToggle color={bgColor} onChange={setBgColor} />
+          <AnimatePresence>
+            {placedStickers.length > 0 && (
+              <motion.div
+                key="wipe"
+                className="mw-page-top-wipe flex items-center gap-2"
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: "auto" }}
+                exit={{ opacity: 0, width: 0 }}
+                transition={{ duration: 0.2 }}
+                style={{ overflow: "hidden" }}
+              >
+                <div className="mw-toolbar-divider w-px h-5 mx-1" style={{ background: dividerColor }} />
+                <motion.button
+                  className="mw-page-wipe-button"
+                  onClick={handleClearAll}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: "4px 2px",
+                    color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.4)",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    transition: "color 0.2s",
+                  }}
+                >
+                  Wipe
+                </motion.button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.div>
 
-      {/* Bottom-left: background color */}
-      <div className="mw-page-bg-color-controls absolute bottom-4 left-4 z-50">
-        <BgColorToggle color={bgColor} onChange={setBgColor} />
-      </div>
-
-      {/* Top-right: mac size */}
-      <div className="mw-page-mac-size-controls absolute top-4 right-4 z-50">
-        <MacSizeToggle size={macSize} onChange={handleMacSizeChange} bgIsDark={bgColor === "dark"} />
-      </div>
-
-      {/* Top-left: capture */}
-      <div className="mw-page-capture-controls absolute top-4 left-4 z-50">
-        <CaptureButton
+      {/* Lid + absolutely-anchored controls */}
+      <motion.div
+        className="mw-page-lid-section relative"
+        animate={{ width: lidPx.width, height: lidPx.height }}
+        transition={{ type: "spring", stiffness: 200, damping: 28 }}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <LidCanvas
+          lidColor={lidColor}
+          macSize={macSize}
+          lidPixelDims={lidPx}
+          stickerDefs={stickerDefs}
+          stickers={placedStickers}
+          selectedId={selectedId}
+          onStickerUpdate={handleStickerUpdate}
+          onStickerRemove={handleStickerRemove}
+          onStickerSelect={handleSelect}
+          onStickerBringForward={handleBringForward}
+          onStickerSendBackward={handleSendBackward}
+          onLidClick={handleLidClick}
+          lidRef={lidRef}
           captureRef={captureRef}
-          onBeforeCapture={() => setSelectedId(null)}
-          bgIsDark={bgColor === "dark"}
         />
-      </div>
 
-      {/* Lid canvas */}
-      <LidCanvas
-        lidColor={lidColor}
-        macSize={macSize}
-        stickerDefs={stickerDefs}
-        stickers={placedStickers}
-        selectedId={selectedId}
-        onStickerUpdate={handleStickerUpdate}
-        onStickerRemove={handleStickerRemove}
-        onStickerSelect={handleSelect}
-        onStickerBringForward={handleBringForward}
-        onStickerSendBackward={handleSendBackward}
-        lidRef={lidRef}
-        captureRef={captureRef}
-      />
+        <AnimatePresence>
+          {lidSelected && (
+            <motion.div
+              key="lid-controls"
+              className="mw-page-lid-controls absolute left-1/2 flex items-center gap-3 px-4 py-2 rounded-2xl"
+              style={{
+                top: "calc(100% + 12px)",
+                translateX: "-50%",
+                whiteSpace: "nowrap",
+                background: pillBg,
+                border: `1px solid ${pillBorder}`,
+                backdropFilter: "blur(16px)",
+                WebkitBackdropFilter: "blur(16px)",
+              }}
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ type: "spring", stiffness: 400, damping: 28 }}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <LidColorToggle color={lidColor} onChange={setLidColor} />
+              <div className="mw-toolbar-divider w-px h-5" style={{ background: dividerColor }} />
+              <MacSizeToggle size={macSize} onChange={handleMacSizeChange} bgIsDark={isDark} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
 
       {/* Hint text */}
       {placedStickers.length === 0 && (
         <p
-          className="mw-page-hint absolute text-xs tracking-wide mt-2"
+          className="mw-page-hint absolute text-xs tracking-wide"
           style={{
-            color: bgColor === "dark" ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.25)",
-            top: `calc(50% + min(${lidDims.halfHeightVw.toFixed(3)}vw, ${lidDims.halfHeightPx.toFixed(1)}px) + 12px)`,
+            color: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.25)",
+            top: `calc(50% + ${(lidPx.height / 2).toFixed(1)}px + 12px)`,
           }}
         >
           Drag stickers from the toolbar below
@@ -189,10 +291,8 @@ export default function Home() {
       {/* Toolbar */}
       <StickerToolbar
         defs={stickerDefs}
-        placedCount={placedStickers.length}
         lidRef={lidRef}
         onStickerDrop={handleStickerDrop}
-        onClearAll={handleClearAll}
       />
     </motion.main>
   );

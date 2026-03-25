@@ -44,10 +44,6 @@ export function BgColorToggle({ color, onChange }: BgColorToggleProps) {
               height: 28,
               borderRadius: "50%",
               background: opt.bg,
-              border: `2px solid ${selected ? (opt.value === "light" ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.8)") : opt.border}`,
-              boxShadow: selected
-                ? "0 0 0 1px rgba(128,128,128,0.3), 0 2px 8px rgba(0,0,0,0.4)"
-                : "0 2px 6px rgba(0,0,0,0.3)",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",

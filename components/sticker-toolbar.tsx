@@ -3,23 +3,18 @@
 import { useRef, useMemo } from "react";
 import { motion } from "motion/react";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
-import { Button } from "@/components/ui/button";
 import type { StickerDef, PlacedSticker } from "@/lib/types";
 
 interface StickerToolbarProps {
   defs: StickerDef[];
-  placedCount: number;
   lidRef: React.RefObject<HTMLDivElement | null>;
   onStickerDrop: (sticker: Omit<PlacedSticker, "uid">) => void;
-  onClearAll: () => void;
 }
 
 export function StickerToolbar({
   defs,
-  placedCount,
   lidRef,
   onStickerDrop,
-  onClearAll,
 }: StickerToolbarProps) {
   const draggingDef = useRef<StickerDef | null>(null);
   const ghostRef = useRef<HTMLDivElement | null>(null);
@@ -90,12 +85,12 @@ export function StickerToolbar({
     if (rawX >= 0 && rawX <= rect.width && rawY >= 0 && rawY <= rect.height) {
       const halfX = draggingDef.current.size.x / 2;
       const halfY = draggingDef.current.size.y / 2;
-      const x = Math.max(halfX, Math.min(rect.width - halfX, rawX));
-      const y = Math.max(halfY, Math.min(rect.height - halfY, rawY));
+      const xPx = Math.max(halfX, Math.min(rect.width - halfX, rawX));
+      const yPx = Math.max(halfY, Math.min(rect.height - halfY, rawY));
       onStickerDrop({
         defId: draggingDef.current.id,
-        x,
-        y,
+        x: xPx / rect.width,
+        y: yPx / rect.height,
         rotation: 0,
         scale: 1,
       });
@@ -115,24 +110,6 @@ export function StickerToolbar({
         <div
           className="mw-toolbar-pill flex items-center gap-2 px-4 py-3 rounded-2xl"
         >
-          {/* Sticker count badge — hidden when empty */}
-          {placedCount > 0 && (
-            <>
-              <div
-                className="mw-toolbar-count text-xs font-medium px-2 py-0.5 rounded-full mr-1"
-                style={{
-                  background: "rgba(255,255,255,0.1)",
-                  color: "#e0e0e0",
-                }}
-              >
-                {placedCount} {placedCount === 1 ? "sticker" : "stickers"}
-              </div>
-
-              {/* Divider */}
-              <div className="mw-toolbar-divider w-px h-6 bg-white/10 mx-1" />
-            </>
-          )}
-
           {/* Sticker items */}
           {defs.map((def, i) => (
             <motion.div
@@ -184,26 +161,6 @@ export function StickerToolbar({
             </motion.div>
           ))}
 
-          {/* Divider */}
-          <div className="mw-toolbar-divider w-px h-6 bg-white/10 mx-1" />
-
-          {/* Clear button */}
-          <motion.div
-            className="mw-toolbar-clear-wrapper"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.35 + defs.length * 0.05 }}
-          >
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClearAll}
-              disabled={placedCount === 0}
-              className="text-xs"
-            >
-              Clear
-            </Button>
-          </motion.div>
         </div>
       </motion.div>
     </TooltipProvider>

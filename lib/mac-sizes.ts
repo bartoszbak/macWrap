@@ -17,6 +17,11 @@ export const MAC_SIZE_SPECS: Record<MacSize, MacSizeSpec> = {
   "16": { label: '16"', maxWidth: 900, vwFactor: 75, aspectRatio: 3456 / 2234 },
 };
 
+export function computeLidPixelDims(spec: MacSizeSpec) {
+  const width = Math.min(window.innerWidth * spec.vwFactor / 100, spec.maxWidth);
+  return { width, height: width / spec.aspectRatio };
+}
+
 export function lidDimensions(spec: MacSizeSpec) {
   const maxHeight = spec.maxWidth / spec.aspectRatio;
   const vhFactor = spec.vwFactor / spec.aspectRatio;

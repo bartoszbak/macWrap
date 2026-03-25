@@ -3,11 +3,11 @@
 import { motion, AnimatePresence } from "motion/react";
 import { Sticker } from "@/components/sticker";
 import type { PlacedSticker, StickerDef, LidColor, MacSize } from "@/lib/types";
-import { MAC_SIZE_SPECS, lidDimensions } from "@/lib/mac-sizes";
 
 interface LidCanvasProps {
   lidColor: LidColor;
   macSize: MacSize;
+  lidPixelDims: { width: number; height: number };
   stickerDefs: StickerDef[];
   stickers: PlacedSticker[];
   selectedId: string | null;
@@ -16,6 +16,7 @@ interface LidCanvasProps {
   onStickerSelect: (uid: string | null) => void;
   onStickerBringForward: (uid: string) => void;
   onStickerSendBackward: (uid: string) => void;
+  onLidClick: () => void;
   lidRef: React.RefObject<HTMLDivElement | null>;
   captureRef: React.RefObject<HTMLDivElement | null>;
 }
@@ -37,6 +38,7 @@ const LID_SHEEN: Record<LidColor, string> = {
 export function LidCanvas({
   lidColor,
   macSize,
+  lidPixelDims,
   stickerDefs,
   stickers,
   selectedId,
@@ -45,22 +47,22 @@ export function LidCanvas({
   onStickerSelect,
   onStickerBringForward,
   onStickerSendBackward,
+  onLidClick,
   lidRef,
   captureRef,
 }: LidCanvasProps) {
   const defsById = Object.fromEntries(stickerDefs.map((d) => [d.id, d]));
-  const dims = lidDimensions(MAC_SIZE_SPECS[macSize]);
 
   return (
     <motion.div
       ref={(el) => { captureRef.current = el; }}
       initial={{ y: 40, opacity: 0 }}
-      animate={{ y: 0, opacity: 1, width: dims.width, height: dims.height }}
+      animate={{ y: 0, opacity: 1, width: lidPixelDims.width, height: lidPixelDims.height }}
       transition={{ type: "spring", stiffness: 200, damping: 28 }}
       className="mw-lid-wrapper relative"
       style={{
-        width: dims.width,
-        height: dims.height,
+        width: lidPixelDims.width,
+        height: lidPixelDims.height,
       }}
     >
       {/* Lid body — overflow:hidden for visual clipping only */}
@@ -75,7 +77,6 @@ export function LidCanvas({
           overflow: "hidden",
           // @ts-expect-error — cornerShape is a newer CSS property not yet in TypeScript's type definitions
           cornerShape: "superellipse(1.25)",
-          boxShadow: "rgba(0,0,0,0.7) -1px 2px 0px, rgba(0,0,0,0.5) 0px 4px 16px, rgba(255,255,255,0.15) 0px 1px 0px inset",
         }}
       >
         {/* Metallic sheen overlay */}
@@ -133,7 +134,7 @@ export function LidCanvas({
       <div
         ref={lidRef}
         className="mw-lid-stickers-layer"
-        onPointerDown={() => onStickerSelect(null)}
+        onPointerDown={(e) => { e.stopPropagation(); onStickerSelect(null); onLidClick(); }}
         style={{
           position: "absolute",
           inset: 0,
